@@ -1,0 +1,26 @@
+[package]
+name = "spacetiles"
+version = "0.1.0"
+description = "Explore disk space through nested tiles"
+edition = "2021"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+# macOS 27 rejects some stripped proc-macro dylibs produced by current LLVM.
+# Keep build-time symbols until rust-lang/rust#157750 is fixed.
+[profile.release]
+strip = "none"
+
+[profile.release.build-override]
+debug = 1
+strip = "none"

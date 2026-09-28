@@ -1,0 +1,35 @@
+# 依赖、构建产物与自动生成文件
+node_modules/
+/dist/
+/src-tauri/target/
+/src-tauri/gen/
+*.tsbuildinfo
+/coverage/
+
+# 内部文档、协作约定与验收截图，仅保留在本地
+/doc/
+/docs/
+AGENTS.md
+/artifacts/
+
+# 本地环境、密钥与编辑器配置
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+.idea/
+.vscode/
+.codex/
+
+# 系统文件、日志和临时文件
+.DS_Store
+._*
+Thumbs.db
+*.log
+*.swp
+*.swo
+*~
