@@ -244,7 +244,7 @@ impl Tree {
             .nodes
             .get(id)
             .filter(|n| n.directory)
-            .ok_or("目录已不可用，请返回根目录")?;
+            .ok_or("directory_unavailable")?;
         let mut breadcrumbs = VecDeque::new();
         let mut ancestor = Some(id);
         while let Some(index) = ancestor {
@@ -316,7 +316,7 @@ pub fn scan(job: Arc<Job>) {
             Ok(reader) => reader,
             Err(error) => {
                 let mut tree = job.tree.lock().unwrap();
-                tree.nodes[parent].note = Some("无法读取，统计不完整".into());
+                tree.nodes[parent].note = Some("unread".into());
                 tree.issue(&path, error);
                 continue;
             }
@@ -347,15 +347,15 @@ pub fn scan(job: Arc<Job>) {
             let directory = metadata.is_dir();
             let mut skip = false;
             if metadata.file_type().is_symlink() {
-                note = Some("符号链接 · 未跟随".into());
+                note = Some("symlink".into());
                 skip = true;
             } else if !directory && !metadata.is_file() {
-                note = Some("特殊文件 · 已跳过".into());
+                note = Some("special_file".into());
                 skip = true;
             }
             #[cfg(unix)]
             if metadata.dev() != root_device {
-                note = Some("其他设备挂载点 · 已跳过".into());
+                note = Some("other_device".into());
                 skip = true;
             }
             if metadata.is_file() && !skip {
@@ -365,7 +365,7 @@ pub fn scan(job: Arc<Job>) {
                 #[cfg(not(unix))]
                 let duplicate = false;
                 if duplicate {
-                    note = Some("重复硬链接 · 大小已归入其他路径".into());
+                    note = Some("duplicate_link".into());
                 } else {
                     logical = metadata.len();
                     #[cfg(unix)]

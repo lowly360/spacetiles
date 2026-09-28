@@ -1,81 +1,83 @@
 <div align="center">
-  <img src="src-tauri/icons/icon.png" alt="SpaceTiles 图标" width="88" />
+  <img src="src-tauri/icons/icon.png" alt="SpaceTiles icon" width="88" />
   <h1>SpaceTiles</h1>
-  <p>看见空间的去向</p>
-  <p>macOS 磁盘空间分析工具 · Tauri + Rust + React · MIT</p>
+  <p>See where your space goes</p>
+  <p>A disk space analyzer for macOS · Tauri + Rust + React · MIT</p>
+  <p>English | <a href="README.zh-CN.md">简体中文</a></p>
 </div>
 
-SpaceTiles 把文件和目录铺成一张层层嵌套的矩形图：占用越大，方块越大。选择一个目录，就能查看空间分布，逐层找到大文件，再到 Finder 中处理。
+SpaceTiles turns files and folders into a nested treemap: the more space an item uses, the larger its tile. Choose a folder, explore its contents, and locate large files in Finder.
 
-这是一个出于兴趣开发的开源项目，目前为 **0.1 MVP**，优先完善 macOS 体验。未来可能支持 Windows 和 Linux，当前尚未适配。
+This is an open-source hobby project, currently at **0.1 MVP**, with macOS as its first target. Windows and Linux may follow; they are not supported yet.
 
-## 界面预览
+## Screenshots
 
-首页，可以选择目录开始扫描，也可以先打开示例体验。
+Choose a folder to scan, or try the built-in demo first. The screenshots below show the Chinese interface; the app also includes English.
 
-![SpaceTiles 首页](screenshots/home.png)
+![SpaceTiles home screen](screenshots/home.png)
 
-扫描结果与目录列表同步展示，详情侧栏可以收起，给矩形图留出更多空间。
+Explore the treemap alongside a size-sorted folder list. Collapse the details sidebar to give the map more room.
 
-![SpaceTiles 扫描结果：嵌套矩形图、空间统计和目录列表](screenshots/detail1.png)
+![SpaceTiles scan results with a treemap, size details, and folder contents](screenshots/detail1.png)
 
-## 功能
+## Features
 
-- **空间矩形图**：单击查看详情，双击进入目录，通过面包屑返回上级。
-- **按类型配色**：每次启动默认按类型配色，识别 203 种扩展名，涵盖图片、视频、音频、文稿、表格、演示、压缩包、安装包、代码、数据、设计和字体；也可切换为按目录配色。目录和未知类型单独标色。
-- **后台扫描**：展示扫描进度，支持停止和重新扫描，读取失败时标记结果不完整。
-- **两种大小口径**：切换逻辑大小与已分配大小。
-- **目录列表**：按大小排序，支持只看当前目录的直属文件，以及在 Finder 中定位。
-- **macOS 界面**：玻璃材质、紧凑工具栏、系统明暗主题。点击左上角品牌区返回首页，保留本次扫描结果。
-- **示例模式**：不扫描真实文件也能体验界面。
+- **Interactive treemap:** click to inspect an item, double-click to enter a folder, and use breadcrumbs to go back.
+- **File type colors:** starts with colors by type, recognizing 203 extensions across images, video, audio, documents, spreadsheets, presentations, archives, installers, code, data, design, and fonts. Folders and unknown types have their own colors. Folder-based coloring is also available.
+- **Background scanning:** browse while scanning, stop a scan, or rescan. Unreadable items are reported and totals marked as incomplete.
+- **Two size metrics:** switch between logical and allocated size.
+- **Folder list:** sort by size, show only direct files, and reveal items in Finder.
+- **macOS interface:** glass materials, a compact toolbar, and system light/dark appearance. Click the brand in the top-left corner to return home without losing the current scan.
+- **Automatic language:** follows the primary system language on macOS. Chinese language variants use Simplified Chinese; all other languages use English. Use **Settings → Language** to switch between **System default**, **简体中文**, and **English**. Changes apply immediately, preserve the current scan, and are remembered. With System default selected, restart the app after changing your system language. Browser previews follow the browser's primary language. Native permission dialogs follow macOS language settings.
+- **Demo mode:** explore the interface without scanning real files.
 
-扫描在本机进行，不读取文件内容，不上传文件信息。当前不提供文件删除、自动清理、后台监听或历史扫描对比。
+Scans run locally. SpaceTiles reads metadata, not file contents, and does not upload file information. It does not delete files, clean up automatically, monitor folders in the background, or compare scan history.
 
-## 开始使用
+## Getting started
 
-1. 打开应用，点击「选择一个目录」。
-2. 等待扫描，或在扫描过程中浏览已经发现的文件。
-3. 双击较大的目录方块继续深入，单击文件查看大小和路径。
-4. 需要处理文件时，点击「在 Finder 中显示」。
+1. Open the app and choose a folder.
+2. Wait for the scan, or browse items as they are discovered.
+3. Double-click a large folder tile to explore further. Click a file to see its size and details.
+4. Use **Show in Finder** to locate an item you want to manage.
 
-当前应用配置的最低系统版本为 **macOS 13**，已在 Apple Silicon 上进行实机验证；旧系统与 Intel 设备仍待验证。窗口材质随系统版本而异。
+The configured minimum is **macOS 13**. The app has been tested on Apple Silicon; older macOS versions and Intel Macs still need verification. Window materials vary by OS version.
 
-项目尚未完成 Developer ID 签名和公证，目前主要通过源码构建体验。
+Developer ID signing and notarization are not set up yet. Building from source is currently the main way to try the app.
 
-## 本地开发
+## Local development
 
-需要 Node.js **22.12+**、Rust 稳定版和 Xcode Command Line Tools。首次构建需要联网下载依赖。
+Requires **Node.js 22.12+**, stable Rust, and Xcode Command Line Tools. The first build needs an internet connection to download dependencies.
 
 ```sh
 npm ci
 npm run desktop
 ```
 
-`desktop` 会同时启动 Vite 和桌面应用，保存源码后自动更新。
+`desktop` starts both Vite and the desktop app, with automatic updates when source files change.
 
-仅预览网页界面：
+For a browser-only preview:
 
 ```sh
 npm run dev
 ```
 
-访问 <http://127.0.0.1:1420/>，点击「打开示例」。网页预览不支持本机目录扫描。
+Open <http://127.0.0.1:1420/> and select **Try the demo**. The browser preview cannot scan local folders.
 
-这两个命令共用 **1420** 端口，不要同时运行。如果提示端口被占用，先在原开发服务的终端按 `Ctrl+C`，再启动桌面开发。
+Both commands use port **1420**. Do not run them together. If the port is occupied by an earlier development server, stop it with `Ctrl+C` in its terminal before starting desktop development.
 
-### 打包
+### Build the app
 
 ```sh
 npm run package
 ```
 
-按当前电脑架构构建，应用输出位置：
+Builds for the current machine's architecture. Output:
 
 ```text
 src-tauri/target/release/bundle/macos/SpaceTiles.app
 ```
 
-### 检查
+### Checks
 
 ```sh
 npm run check
@@ -86,35 +88,38 @@ cargo test --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 ```
 
-## 权限与统计口径
+## Permissions and size accounting
 
-**普通目录扫描不要求默认开启完全磁盘访问权限。** 部分目录受 macOS 隐私保护或文件权限限制，读取失败会显示错误明细。需要扫描这些位置时，可从应用的权限说明进入系统设置；选择目录不代表取得整盘读取权限。
+**Ordinary folder scans do not require Full Disk Access by default.** macOS privacy protections or file permissions may block some locations. The app lists unreadable items and provides a shortcut to privacy settings. Choosing a folder does not grant access to the entire disk.
 
-**已分配大小不等于删除后可释放的空间。** APFS 的克隆、共享块和快照会影响实际可回收容量。硬链接去重后计入首先发现的路径，符号链接不跟随，不跨设备挂载点；应用包按目录扫描。
+**Allocated size is not the space you can reclaim by deleting a file.** APFS clones, shared blocks, and snapshots affect the amount actually freed. Hard links count once, at the first path discovered. Symbolic links are not followed, mounts on other devices are skipped, and application bundles are scanned as folders.
 
-扫描结果不是文件系统的瞬时快照。扫描中修改文件、主动停止或读取失败，都可能使统计不完整。为保持界面响应，图中会合并部分小项，目录列表最多显示最大的 100 项；可以进入子目录继续查看。「仅文件」只包含当前目录的直属文件。
+A scan is not an atomic filesystem snapshot. Files changing during a scan, cancelled scans, and read failures can all leave totals incomplete. To keep the interface responsive, small items may be grouped in the map, and the folder list shows up to the 100 largest items. Enter a subfolder to explore further. **Files only** lists direct files, excluding files in subfolders.
 
-完整的 TCC 授权流程、不同 macOS 版本兼容性，以及大规模扫描的内存和性能仍在完善中。
+The full macOS privacy authorization lifecycle, compatibility across OS versions, and large-scale memory and performance testing are still being worked on.
 
-## 项目结构
+## Project structure
 
 ```text
 src/
-  components/Treemap.tsx   Canvas 绘制与交互
-  lib/layout.ts           矩形布局与命中检测
-  lib/fileTypes.ts        文件类型与配色
-  App.tsx                 扫描流程与界面
-src-tauri/src/
-  scanner.rs              目录扫描、大小聚合与查询
-  main.rs                 桌面命令与 macOS 集成
-tests/                    前端测试
-screenshots/              README 软件截图
+  components/Treemap.tsx   Canvas rendering and interaction
+  lib/layout.ts           Treemap layout and hit testing
+  lib/fileTypes.ts        File classification and colors
+  lib/i18n.ts             Language detection and UI translations
+  App.tsx                 Scan workflow and interface
+src-tauri/
+  src/scanner.rs          Scanning, aggregation, and queries
+  src/main.rs             Desktop commands and macOS integration
+  src/menu.rs             Localized native menus
+  locales/               Localized macOS permission descriptions
+tests/                    Frontend tests
+screenshots/              README screenshots
 ```
 
-欢迎提交问题反馈和改进。报告扫描或权限问题时，请附上 macOS 版本、芯片架构、操作步骤和错误信息；文件路径可先脱敏。
+Bug reports and improvements are welcome. For scanning or permission issues, include your macOS version, chip architecture, reproduction steps, and error messages. Redact private paths before sharing.
 
-## 致谢与许可
+## Credits and license
 
-矩形图的空间探索方式受到 SpaceSniffer 启发。SpaceTiles 是独立项目，未使用其源代码或视觉素材，也不隶属于 SpaceSniffer。
+SpaceTiles takes inspiration from SpaceSniffer's treemap approach to exploring disk space. It is an independent project and does not use SpaceSniffer's source code or visual assets, nor is it affiliated with SpaceSniffer.
 
-采用 [MIT 许可证](LICENSE)。
+Released under the [MIT License](LICENSE).

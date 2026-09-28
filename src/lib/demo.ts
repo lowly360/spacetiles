@@ -1,9 +1,12 @@
+import { t, english, type Message } from './i18n';
 import type { Snapshot, TileNode } from './types';
 let nextId = 0;
 function file(name: string, mib: number): TileNode {
   return {
     id: nextId++,
-    name,
+    get name() {
+      return name in english ? t(name as Message) : name;
+    },
     directory: false,
     logical: mib * 1048576,
     allocated: mib * 1048576,
@@ -15,7 +18,9 @@ function file(name: string, mib: number): TileNode {
 function folder(name: string, children: TileNode[]): TileNode {
   return {
     id: nextId++,
-    name,
+    get name() {
+      return name in english ? t(name as Message) : name;
+    },
     directory: true,
     logical: children.reduce((sum, n) => sum + n.logical, 0),
     allocated: children.reduce((sum, n) => sum + n.allocated, 0),
@@ -79,8 +84,8 @@ export function demoSnapshot(id: number, allocated: boolean, filesOnly: boolean)
     denied: 0,
     issues: [],
     elapsedMs: 1250,
-    rootPath: '/示例数据/我的空间',
-    currentPath: '/示例数据/' + trail.map((n) => n.name).join('/'),
+    rootPath: t('/示例数据/') + demoRoot.name,
+    currentPath: t('/示例数据/') + trail.map((n) => n.name).join('/'),
     totalLogical: demoRoot.logical,
     totalAllocated: demoRoot.allocated,
     breadcrumbs: trail,

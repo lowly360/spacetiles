@@ -1,0 +1,5 @@
+"NSDesktopFolderUsageDescription" = "读取你选择的桌面目录中的文件名和大小，以显示空间分布。不会修改文件。";
+"NSDocumentsFolderUsageDescription" = "读取你选择的文稿目录中的文件名和大小，以显示空间分布。不会修改文件。";
+"NSDownloadsFolderUsageDescription" = "读取你选择的下载目录中的文件名和大小，以显示空间分布。不会修改文件。";
+"NSRemovableVolumesUsageDescription" = "读取你选择的外接存储目录中的文件名和大小，以显示空间分布。";
+"NSNetworkVolumesUsageDescription" = "读取你选择的网络目录中的文件名和大小，以显示空间分布。";

@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>NSDesktopFolderUsageDescription</key><string>读取你选择的桌面目录中的文件名和大小，以显示空间分布。不会修改文件。</string>
-  <key>NSDocumentsFolderUsageDescription</key><string>读取你选择的文稿目录中的文件名和大小，以显示空间分布。不会修改文件。</string>
-  <key>NSDownloadsFolderUsageDescription</key><string>读取你选择的下载目录中的文件名和大小，以显示空间分布。不会修改文件。</string>
-  <key>NSRemovableVolumesUsageDescription</key><string>读取你选择的外接存储目录中的文件名和大小，以显示空间分布。</string>
-  <key>NSNetworkVolumesUsageDescription</key><string>读取你选择的网络目录中的文件名和大小，以显示空间分布。</string>
-</dict></plist>
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh_CN</string>
+		<string>zh_TW</string>
+		<string>zh_HK</string>
+	</array>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Read file names and sizes in the Desktop folder you choose to show disk usage. No files are modified.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Read file names and sizes in the Documents folder you choose to show disk usage. No files are modified.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Read file names and sizes in the Downloads folder you choose to show disk usage. No files are modified.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>Read file names and sizes in the network folder you choose to show disk usage.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>Read file names and sizes on the external drive you choose to show disk usage.</string>
+</dict>
+</plist>

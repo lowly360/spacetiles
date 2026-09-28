@@ -2917,6 +2917,7 @@ dependencies = [
 name = "spacetiles"
 version = "0.1.0"
 dependencies = [
+ "objc2-foundation",
  "serde",
  "tauri",
  "tauri-build",

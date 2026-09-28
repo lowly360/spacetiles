@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../lib/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatSize, type Entry, type Metric, type TileNode } from '../lib/types';
 import { groupColors, entryColor, shade, type ColorMode } from '../lib/palette';
@@ -12,11 +13,15 @@ interface Props {
   onEnter: (entry: Entry) => void;
 }
 export function Treemap({ colorMode, rootPath, root, metric, selected, onSelect, onEnter }: Props) {
+  const language = useLanguage();
   const container = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [hover, setHover] = useState<{ tile: Tile; x: number; y: number } | null>(null);
-  const tiles = useMemo(() => layout(root, size.width, size.height, metric), [root, size, metric]);
+  const tiles = useMemo(
+    () => layout(root, size.width, size.height, metric),
+    [root, size, metric, language],
+  );
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) =>
       setSize({ width: entry.contentRect.width, height: entry.contentRect.height }),
@@ -24,7 +29,7 @@ export function Treemap({ colorMode, rootPath, root, metric, selected, onSelect,
     if (container.current) observer.observe(container.current);
     return () => observer.disconnect();
   }, []);
-  useEffect(() => setHover(null), [root.id, metric]);
+  useEffect(() => setHover(null), [root.id, metric, language]);
   const groups = useMemo(() => groupColors(root.children, rootPath), [root, rootPath]);
   useEffect(() => {
     const element = canvas.current;
@@ -89,7 +94,7 @@ export function Treemap({ colorMode, rootPath, root, metric, selected, onSelect,
     <div className="treemap" ref={container}>
       <canvas
         ref={canvas}
-        aria-label="空间矩形图；也可通过右侧目录列表使用键盘浏览"
+        aria-label={t('空间矩形图；也可通过右侧目录列表使用键盘浏览')}
         onMouseMove={(e) => {
           const hit = pointer(e);
           setHover(hit.tile ? { ...hit, tile: hit.tile } : null);
@@ -107,8 +112,8 @@ export function Treemap({ colorMode, rootPath, root, metric, selected, onSelect,
       />
       {root[metric] === 0 && (
         <div className="map-empty">
-          <span>无可显示的大小</span>
-          <p>请在右侧查看空文件或未读取的项目。</p>
+          <span>{t('无可显示的大小')}</span>
+          <p>{t('请在右侧查看空文件或未读取的项目。')}</p>
         </div>
       )}
       {hover && (
@@ -123,7 +128,11 @@ export function Treemap({ colorMode, rootPath, root, metric, selected, onSelect,
           <small>{rootPath.replace(/\/$/, '') + hover.tile.relativePath}</small>
           <span>
             {formatSize(hover.tile.node[metric])}
-            {hover.tile.aggregate ? ' · 合并显示' : hover.tile.node.directory ? ' · 双击进入' : ''}
+            {hover.tile.aggregate
+              ? t(' · 合并显示')
+              : hover.tile.node.directory
+                ? t(' · 双击进入')
+                : ''}
           </span>
           {hover.tile.node.note && <small>{hover.tile.node.note}</small>}
         </div>

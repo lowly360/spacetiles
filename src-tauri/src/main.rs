@@ -1,4 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#[cfg(target_os = "macos")]
+mod menu;
 mod scanner;
 use scanner::{Job, Snapshot, Tree};
 use std::{
@@ -18,23 +20,22 @@ fn current_job(state: &AppState, scan_id: u64) -> Result<Arc<Job>, String> {
     state
         .current
         .lock()
-        .map_err(|_| "扫描状态不可用")?
+        .map_err(|_| "scan_state_unavailable")?
         .as_ref()
         .filter(|job| job.id == scan_id)
         .cloned()
-        .ok_or_else(|| "扫描已被替换，请刷新视图".into())
+        .ok_or_else(|| "scan_replaced".into())
 }
 #[tauri::command]
 async fn start_scan(path: String, state: tauri::State<'_, AppState>) -> Result<u64, String> {
     let path = PathBuf::from(path);
     if !path.is_absolute() {
-        return Err("请选择绝对路径目录".into());
+        return Err("absolute_path_required".into());
     }
     // Canonicalization resolves a selected root symlink; descendants are never followed.
-    let root = std::fs::canonicalize(&path)
-        .map_err(|e| format!("无法访问所选目录：{e}。请检查隐私与安全性中的文件访问权限。"))?;
+    let root = std::fs::canonicalize(&path).map_err(|e| format!("folder_access_failed: {e}"))?;
     if !root.is_dir() {
-        return Err("请选择一个目录".into());
+        return Err("directory_required".into());
     }
     let id = state.next_id.fetch_add(1, Ordering::Relaxed) + 1;
     let job = Arc::new(Job {
@@ -43,7 +44,7 @@ async fn start_scan(path: String, state: tauri::State<'_, AppState>) -> Result<u
         tree: Mutex::new(Tree::new(root)),
     });
     {
-        let mut current = state.current.lock().map_err(|_| "扫描状态不可用")?;
+        let mut current = state.current.lock().map_err(|_| "scan_state_unavailable")?;
         if let Some(previous) = current.take() {
             previous.cancel.store(true, Ordering::Relaxed);
         }
@@ -71,7 +72,7 @@ async fn get_snapshot(
     tauri::async_runtime::spawn_blocking(move || {
         job.tree
             .lock()
-            .map_err(|_| "扫描数据不可用".to_string())?
+            .map_err(|_| "scan_data_unavailable".to_string())?
             .snapshot(scan_id, node_id, allocated, files_only)
     })
     .await
@@ -87,11 +88,11 @@ async fn reveal_item(
     let path = job
         .tree
         .lock()
-        .map_err(|_| "扫描数据不可用")?
+        .map_err(|_| "scan_data_unavailable")?
         .path(node_id)
-        .ok_or("找不到该项目")?;
+        .ok_or("item_not_found")?;
     if std::fs::symlink_metadata(&path).is_err() {
-        return Err("项目已移动、删除或不可访问，请重新扫描".into());
+        return Err("item_unavailable".into());
     }
     #[cfg(target_os = "macos")]
     {
@@ -101,14 +102,14 @@ async fn reveal_item(
             .status()
             .map_err(|e| e.to_string())?;
         if !status.success() {
-            return Err("无法在 Finder 中显示该项目".into());
+            return Err("reveal_failed".into());
         }
         Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
         let _ = path;
-        Err("首版仅支持 macOS Finder".into())
+        Err("finder_macos_only".into())
     }
 }
 #[tauri::command]
@@ -120,26 +121,64 @@ fn open_privacy_settings() -> Result<(), String> {
             .status()
             .map_err(|e| e.to_string())?;
         if !status.success() {
-            return Err("请手动打开系统设置 → 隐私与安全性".into());
+            return Err("settings_failed".into());
         }
         Ok(())
     }
     #[cfg(not(target_os = "macos"))]
     {
-        Err("此设置入口仅适用于 macOS".into())
+        Err("settings_macos_only".into())
     }
+}
+// Read language preference rather than region (e.g. an English UI in China).
+#[tauri::command]
+fn preferred_language() -> String {
+    #[cfg(target_os = "macos")]
+    {
+        objc2_foundation::NSLocale::preferredLanguages()
+            .firstObject()
+            .map(|language| language.to_string())
+            .unwrap_or_else(|| "en".into())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        "en".into()
+    }
+}
+#[tauri::command]
+fn set_menu_language(app: tauri::AppHandle, language: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    app.set_menu(menu::localized_menu(&app, language == "zh").map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, language);
+    Ok(())
 }
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
+        .setup(|app| {
+            #[cfg(target_os = "macos")]
+            app.set_menu(menu::localized_menu(
+                app.handle(),
+                preferred_language()
+                    .to_ascii_lowercase()
+                    .split(['-', '_'])
+                    .next()
+                    == Some("zh"),
+            )?)?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             start_scan,
             cancel_scan,
             get_snapshot,
             reveal_item,
-            open_privacy_settings
+            open_privacy_settings,
+            preferred_language,
+            set_menu_language
         ])
         .run(tauri::generate_context!())
-        .expect("无法启动 SpaceTiles");
+        .expect("Failed to start SpaceTiles");
 }

@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import type { Metric, TileNode } from './types';
 export interface Rect {
   x: number;
@@ -75,7 +76,13 @@ export function layout(root: TileNode, width: number, height: number, metric: Me
     }));
     if (node.otherSize > 0)
       children.push({
-        node: { ...node, name: '其他项目', [metric]: node.otherSize, children: [], otherSize: 0 },
+        node: {
+          ...node,
+          name: t('其他项目'),
+          [metric]: node.otherSize,
+          children: [],
+          otherSize: 0,
+        },
         size: node.otherSize,
         aggregate: true,
       });

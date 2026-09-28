@@ -1,0 +1,5 @@
+"NSDesktopFolderUsageDescription" = "Read file names and sizes in the Desktop folder you choose to show disk usage. No files are modified.";
+"NSDocumentsFolderUsageDescription" = "Read file names and sizes in the Documents folder you choose to show disk usage. No files are modified.";
+"NSDownloadsFolderUsageDescription" = "Read file names and sizes in the Downloads folder you choose to show disk usage. No files are modified.";
+"NSRemovableVolumesUsageDescription" = "Read file names and sizes on the external drive you choose to show disk usage.";
+"NSNetworkVolumesUsageDescription" = "Read file names and sizes in the network folder you choose to show disk usage.";

@@ -7,8 +7,9 @@ const mocks = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: mocks.open }));
 // Canvas geometry is tested separately. Here we exercise async command orchestration.
-vi.mock('../src/components/Treemap', () => ({ Treemap: () => <div>空间图</div> }));
+vi.mock('../src/components/Treemap', () => ({ Treemap: () => <div>Treemap</div> }));
 import App from '../src/App';
+import { setLanguage } from '../src/lib/i18n';
 function snapshot(scanId = 1, status: Snapshot['status'] = 'complete'): Snapshot {
   const tree = {
     id: 0,
@@ -41,6 +42,7 @@ function snapshot(scanId = 1, status: Snapshot['status'] = 'complete'): Snapshot
   };
 }
 beforeEach(() => {
+  setLanguage('zh');
   localStorage.clear();
   vi.clearAllMocks();
   mocks.open.mockResolvedValue('/test');
@@ -142,4 +144,57 @@ it('returns home from the brand without losing the current scan', async () => {
   expect(screen.getByRole('heading', { name: '目录 1' })).toBeTruthy();
   expect(mocks.invoke.mock.calls.filter((call) => call[0] === 'start_scan')).toHaveLength(1);
   expect(mocks.invoke.mock.calls.some((call) => call[0] === 'cancel_scan')).toBe(false);
+});
+
+it('renders English demo, legends and permissions without translating real names', async () => {
+  setLanguage('en');
+  render(<App />);
+  expect(document.documentElement.lang).toBe('en');
+  fireEvent.click(screen.getByRole('button', { name: 'Try the demo' }));
+  expect(await screen.findByRole('heading', { name: 'My space' })).toBeTruthy();
+  expect(screen.getByText('Images')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Open Movies' }));
+  expect(await screen.findByRole('heading', { name: 'Movies' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Permissions and size information' }));
+  expect(within(screen.getByRole('dialog')).getByText('File access')).toBeTruthy();
+  expect(document.body.textContent).not.toMatch(/[\u3400-\u9fff]/);
+});
+it('translates native errors and keeps user filenames unchanged in English', async () => {
+  setLanguage('en');
+  mocks.invoke.mockRejectedValueOnce('folder_access_failed: Permission denied');
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+  expect(await screen.findByRole('alert')).toHaveProperty(
+    'textContent',
+    expect.stringContaining('Cannot access this folder.'),
+  );
+  mocks.invoke.mockImplementation(async (command: string) =>
+    command === 'start_scan' ? 1 : snapshot(),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Choose folder' }));
+  expect(await screen.findByRole('heading', { name: '目录 1' })).toBeTruthy();
+});
+it('switches language immediately through settings without losing the scan', async () => {
+  mocks.invoke.mockImplementation(async (command: string) =>
+    command === 'start_scan' ? 1 : command === 'set_menu_language' ? undefined : snapshot(),
+  );
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: '选择目录' }));
+  expect(await screen.findByRole('heading', { name: '目录 1' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '设置' }));
+  fireEvent.change(screen.getByRole('combobox', { name: '界面语言' }), { target: { value: 'en' } });
+  expect(screen.getByRole('dialog', { name: 'Settings' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'About' }));
+  expect(screen.getByText('Version')).toBeTruthy();
+  expect(screen.getByText('MIT')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'General' }));
+  expect(screen.getByRole('combobox', { name: 'Language' })).toHaveProperty('value', 'en');
+  expect(localStorage.getItem('spacetiles.language')).toBe('en');
+  expect(document.documentElement.lang).toBe('en');
+  fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
+  expect(await screen.findByRole('heading', { name: '目录 1' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Rescan' })).toBeTruthy();
+  expect(mocks.invoke.mock.calls.filter((call) => call[0] === 'start_scan')).toHaveLength(1);
+  expect(mocks.invoke.mock.calls.some((call) => call[0] === 'cancel_scan')).toBe(false);
+  expect(mocks.invoke).toHaveBeenCalledWith('set_menu_language', { language: 'en' });
 });

@@ -1,3 +1,4 @@
+import { t, translateError, translateNote, useLanguage } from './lib/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -19,7 +20,9 @@ import {
   X,
   Info,
   Play,
+  Settings,
 } from 'lucide-react';
+import { SettingsPanel } from './components/SettingsPanel';
 import { Treemap } from './components/Treemap';
 import { formatSize, type Entry, type Metric, type Snapshot } from './lib/types';
 import { groupColors, entryColor, type ColorMode } from './lib/palette';
@@ -28,8 +31,15 @@ import { version } from '../package.json';
 import { demoRoot, demoSnapshot } from './lib/demo';
 
 const native = isTauri();
-const statuses = { scanning: '正在扫描', complete: '扫描完成', cancelled: '已取消 · 部分结果' };
+
 export default function App() {
+  const language = useLanguage();
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const statuses = {
+    scanning: t('正在扫描'),
+    complete: t('扫描完成'),
+    cancelled: t('已取消 · 部分结果'),
+  };
   const [showHome, setShowHome] = useState(true);
   const [scanId, setScanId] = useState<number | null>(null);
   const [directory, setDirectory] = useState(0);
@@ -82,19 +92,20 @@ export default function App() {
       disposed = true;
       clearTimeout(timer);
     };
-  }, [scanId, directory, metric, filesOnly]);
+  }, [scanId, directory, metric, filesOnly, language]);
   useEffect(() => {
-    if (!privacy && !issues) return;
+    if (!privacy && !issues && !preferencesOpen) return;
     const previous = document.activeElement as HTMLElement | null;
     const modal = document.querySelector<HTMLElement>('[role="dialog"]');
     const focusable = () =>
       Array.from(
-        modal?.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]') ?? [],
+        modal?.querySelectorAll<HTMLElement>('button:not(:disabled), select, [tabindex="0"]') ?? [],
       );
     focusable()[0]?.focus();
     function keydown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setPrivacy(false);
+        setPreferencesOpen(false);
         setIssues(false);
       }
       if (event.key === 'Tab') {
@@ -115,7 +126,7 @@ export default function App() {
       document.removeEventListener('keydown', keydown);
       previous?.focus();
     };
-  }, [privacy, issues]);
+  }, [privacy, issues, preferencesOpen]);
   async function start(path: string) {
     const version = ++actionVersion.current;
     setBusy(true);
@@ -142,7 +153,7 @@ export default function App() {
     setError('');
     setBusy(true);
     try {
-      const path = await open({ directory: true, multiple: false, title: '选择要分析的目录' });
+      const path = await open({ directory: true, multiple: false, title: t('选择要分析的目录') });
       if (typeof path === 'string') await start(path);
     } catch (e) {
       setError(String(e));
@@ -220,8 +231,8 @@ export default function App() {
       <header className="toolbar" data-tauri-drag-region>
         <button
           className="home-brand"
-          aria-label="SpaceTiles 首页"
-          title="返回首页，保留当前扫描"
+          aria-label={t('SpaceTiles 首页')}
+          title={t('返回首页，保留当前扫描')}
           onClick={() => setShowHome(true)}
         >
           <span className="brand-mark">
@@ -231,22 +242,24 @@ export default function App() {
             <span className="brand-name">
               SpaceTiles <span className="version">{version}</span>
             </span>
-            <span className="slogan">看见空间的去向</span>
+            <span className="slogan">{t('看见空间的去向')}</span>
           </span>
         </button>
         <div className="brand" data-tauri-drag-region title={snapshot?.rootPath ?? 'SpaceTiles'}>
           {snapshot ? <HardDrive size={18} /> : <LayoutGrid size={18} />}
           <div data-tauri-drag-region>
             <strong data-tauri-drag-region>
-              {snapshot?.breadcrumbs[0].name ?? '磁盘空间分析'}
+              {snapshot?.breadcrumbs[0].name ?? t('磁盘空间分析')}
             </strong>
             {snapshot && (
               <small data-tauri-drag-region>
                 {formatSize(total)}
                 <span className="header-counts">
-                  {' '}
-                  · {snapshot.files.toLocaleString()} 文件 · {snapshot.directories.toLocaleString()}{' '}
-                  目录
+                  {' · '}
+                  {t('{files} 文件 · {folders} 目录', {
+                    files: snapshot.files.toLocaleString(),
+                    folders: snapshot.directories.toLocaleString(),
+                  })}
                 </span>
               </small>
             )}
@@ -255,19 +268,19 @@ export default function App() {
         <div className="toolbar-actions">
           <button disabled={busy} onClick={choose}>
             <FolderOpen size={16} />
-            {busy ? '打开中…' : '选择目录'}
+            {busy ? t('打开中…') : t('选择目录')}
           </button>
           <button
             disabled={!snapshot || busy || demo}
             onClick={() => snapshot && start(snapshot.rootPath)}
           >
             <RefreshCw size={15} />
-            重新扫描
+            {t('重新扫描')}
           </button>
           {scanning && (
             <button onClick={cancel}>
               <Square size={13} />
-              停止
+              {t('停止')}
             </button>
           )}
         </div>
@@ -275,48 +288,65 @@ export default function App() {
         {snapshot && (
           <div
             className="scan-state"
-            title={`${snapshot.files.toLocaleString()} 个文件 · ${snapshot.directories.toLocaleString()} 个目录 · ${(snapshot.elapsedMs / 1000).toFixed(1)} 秒`}
+            title={t('{files} 个文件 · {folders} 个目录 · {seconds} 秒', {
+              files: snapshot.files.toLocaleString(),
+              folders: snapshot.directories.toLocaleString(),
+              seconds: (snapshot.elapsedMs / 1000).toFixed(1),
+            })}
           >
             <span className={scanning ? 'status-dot running' : 'status-dot'} />
             <span>
-              {demo ? '示例' : statuses[snapshot.status]}
-              {snapshot.errors > 0 ? ' · 不完整' : ''}
+              {demo ? t('示例') : statuses[snapshot.status]}
+              {snapshot.errors > 0 ? t(' · 不完整') : ''}
             </span>
-            <small>{(snapshot.elapsedMs / 1000).toFixed(1)} 秒</small>
+            <small>{t('{seconds} 秒', { seconds: (snapshot.elapsedMs / 1000).toFixed(1) })}</small>
           </div>
         )}
         <div className="toolbar-actions">
           <label className="toolbar-select">
             <Palette size={15} />
             <select
-              aria-label="配色方式"
+              aria-label={t('配色方式')}
               value={colorMode}
               onChange={(e) => setColorMode(e.target.value as ColorMode)}
             >
-              <option value="directory">按目录配色</option>
-              <option value="type">按类型配色</option>
+              <option value="directory">{t('按目录配色')}</option>
+              <option value="type">{t('按类型配色')}</option>
             </select>
           </label>
-          <button aria-label="权限与统计说明" onClick={() => setPrivacy(true)}>
+          <button aria-label={t('权限与统计说明')} onClick={() => setPrivacy(true)}>
             <ShieldCheck size={15} />
-            权限
+            {t('权限')}
           </button>
           <button
-            aria-label="显示详情侧栏"
+            aria-label={t('显示详情侧栏')}
             aria-pressed={sidebarVisible}
             onClick={() => setSidebarVisible((v) => !v)}
           >
             <PanelRight size={15} />
-            详情
+            {t('详情')}
           </button>
         </div>
+        <button
+          className="settings-button"
+          title={t('设置')}
+          aria-label={t('设置')}
+          onClick={() => setPreferencesOpen(true)}
+        >
+          <Settings size={15} />
+          <span>{t('设置')}</span>
+        </button>
       </header>
       {error && (
         <div className="error-banner" role="alert">
           <Info size={16} />
-          <span>{error}</span>
-          <button onClick={() => setPrivacy(true)}>权限说明</button>
-          <button className="icon-button" aria-label="关闭错误提示" onClick={() => setError('')}>
+          <span>{translateError(error)}</span>
+          <button onClick={() => setPrivacy(true)}>{t('权限说明')}</button>
+          <button
+            className="icon-button"
+            aria-label={t('关闭错误提示')}
+            onClick={() => setError('')}
+          >
             <X size={14} />
           </button>
         </div>
@@ -329,37 +359,37 @@ export default function App() {
               SpaceTiles <span>{version}</span>
             </span>
             <h1>
-              磁盘空间，
+              {t('磁盘空间，')}
               <br />
-              一目了然。
+              {t('一目了然。')}
             </h1>
             <p>
-              文件与目录，按大小展开。
+              {t('文件与目录，按大小展开。')}
               <br />
-              从一张矩形图开始，找到占用空间的大文件。
+              {t('从一张矩形图开始，找到占用空间的大文件。')}
             </p>
             <div className="welcome-actions">
               <button className="primary" onClick={choose} disabled={busy}>
                 <FolderOpen size={17} />
-                选择一个目录
+                {t('选择一个目录')}
               </button>
               {snapshot ? (
                 <button onClick={() => setShowHome(false)}>
                   <ArrowLeft size={15} />
-                  {demo ? '返回示例' : '返回扫描'}
+                  {demo ? t('返回示例') : t('返回扫描')}
                 </button>
               ) : (
                 <button disabled={busy} onClick={showDemo}>
                   <Play size={15} />
-                  打开示例
+                  {t('打开示例')}
                 </button>
               )}
             </div>
             <div className="welcome-note">
               <ShieldCheck size={14} />
-              本地只读扫描 · 不修改文件
+              {t('本地只读扫描 · 不修改文件')}
             </div>
-            {scanId !== null && !snapshot && <p role="status">正在读取目录…</p>}
+            {scanId !== null && !snapshot && <p role="status">{t('正在读取目录…')}</p>}
           </div>
           <div className="welcome-art" aria-hidden="true">
             <div className="art-toolbar">
@@ -371,18 +401,18 @@ export default function App() {
             </div>
             <div className="art-grid">
               <div className="art-folder art-video">
-                <span>视频</span>
+                <span>{t('视频')}</span>
                 <div className="art-inner">
                   <i>
-                    <span>旅行.mov</span>
+                    <span>{t('旅行.mov')}</span>
                   </i>
                   <i>
-                    <span>剪辑.mp4</span>
+                    <span>{t('剪辑.mp4')}</span>
                   </i>
                 </div>
               </div>
               <div className="art-folder art-images">
-                <span>图片</span>
+                <span>{t('图片')}</span>
                 <div className="art-inner">
                   <i />
                   <i />
@@ -390,14 +420,14 @@ export default function App() {
                 </div>
               </div>
               <div className="art-folder art-docs">
-                <span>文稿</span>
+                <span>{t('文稿')}</span>
                 <div className="art-inner">
                   <i />
                   <i />
                 </div>
               </div>
               <div className="art-folder art-music">
-                <span>音频</span>
+                <span>{t('音频')}</span>
                 <div className="art-inner">
                   <i />
                   <i />
@@ -407,9 +437,9 @@ export default function App() {
             <div className="art-footer">
               <span>
                 <i />
-                按文件类型配色
+                {t('按文件类型配色')}
               </span>
-              <span>只读</span>
+              <span>{t('只读')}</span>
             </div>
           </div>
         </main>
@@ -419,21 +449,23 @@ export default function App() {
             <div className="permission-banner">
               <Info size={16} />
               <span>
-                {snapshot.errors} 项未能读取
-                {snapshot.denied > 0 ? `，其中 ${snapshot.denied} 项访问被拒绝` : ''}
-                。当前大小不包含未读取内容。
+                {t('{count} 项未能读取。当前大小不包含未读取内容。', { count: snapshot.errors })}
+                {snapshot.denied > 0 &&
+                  ' ' + t('其中 {count} 项访问被拒绝。', { count: snapshot.denied })}
               </span>
-              <button onClick={() => setIssues(true)}>查看详情</button>
-              {snapshot.denied > 0 && <button onClick={() => setPrivacy(true)}>权限设置</button>}
+              <button onClick={() => setIssues(true)}>{t('查看详情')}</button>
+              {snapshot.denied > 0 && (
+                <button onClick={() => setPrivacy(true)}>{t('权限设置')}</button>
+              )}
             </div>
           )}
           <div className="workspace">
             <main className="map-panel">
               <div className="map-toolbar">
-                <nav aria-label="目录路径">
+                <nav aria-label={t('目录路径')}>
                   <button
                     className="icon-button"
-                    aria-label="返回上一级"
+                    aria-label={t('返回上一级')}
                     disabled={!parent || loadingView}
                     onClick={() => parent && enter(parent)}
                   >
@@ -452,21 +484,21 @@ export default function App() {
                     </span>
                   ))}
                 </nav>
-                <div className="metric-switch" role="group" aria-label="大小统计方式">
+                <div className="metric-switch" role="group" aria-label={t('大小统计方式')}>
                   <Ruler size={13} />
                   <button
                     aria-pressed={metric === 'logical'}
                     className={metric === 'logical' ? 'active' : ''}
                     onClick={() => setMetric('logical')}
                   >
-                    逻辑大小
+                    {t('逻辑大小')}
                   </button>
                   <button
                     aria-pressed={metric === 'allocated'}
                     className={metric === 'allocated' ? 'active' : ''}
                     onClick={() => setMetric('allocated')}
                   >
-                    已分配
+                    {t('已分配')}
                   </button>
                 </div>
               </div>
@@ -485,14 +517,14 @@ export default function App() {
             {sidebarVisible && (
               <aside className="sidebar">
                 <section className="selection">
-                  <span className="eyebrow">{selected ? '选中项目' : '当前目录'}</span>
+                  <span className="eyebrow">{selected ? t('选中项目') : t('当前目录')}</span>
                   <div className="selection-title">
                     {chosen?.directory ? <Folder size={19} /> : <File size={19} />}
                     <h2 title={chosen?.name}>{chosen?.name}</h2>
                   </div>
                   <div className="selected-size">{formatSize(chosen?.[metric] ?? 0)}</div>
                   <div className="share-line">
-                    <span>占当前目录</span>
+                    <span>{t('占当前目录')}</span>
                     <span>{percent.toFixed(1)}%</span>
                   </div>
                   <div className="share-track">
@@ -500,46 +532,46 @@ export default function App() {
                   </div>
                   <dl>
                     <div>
-                      <dt>逻辑大小</dt>
+                      <dt>{t('逻辑大小')}</dt>
                       <dd>{formatSize(chosen?.logical ?? 0)}</dd>
                     </div>
                     <div>
-                      <dt>已分配大小</dt>
+                      <dt>{t('已分配大小')}</dt>
                       <dd>{formatSize(chosen?.allocated ?? 0)}</dd>
                     </div>
                   </dl>
-                  {chosen?.note && <p className="item-note">{chosen.note}</p>}
+                  {chosen?.note && <p className="item-note">{translateNote(chosen.note)}</p>}
                   <button
                     className="reveal"
                     disabled={demo || !chosen}
                     onClick={() => chosen && reveal(chosen)}
                   >
                     <FolderOpen size={15} />
-                    在 Finder 中显示
+                    {t('在 Finder 中显示')}
                     <ArrowUpRight size={13} />
                   </button>
                 </section>
                 <section className="contents">
                   <div className="contents-heading">
-                    <h3>{filesOnly ? '直属大文件' : '目录内容'}</h3>
-                    <span>{snapshot.childCount} 项</span>
+                    <h3>{filesOnly ? t('直属大文件') : t('目录内容')}</h3>
+                    <span>{t('{count} 项', { count: snapshot.childCount })}</span>
                   </div>
                   <div className="list-tabs">
                     <button
                       className={!filesOnly ? 'active' : ''}
                       onClick={() => setFilesOnly(false)}
                     >
-                      全部
+                      {t('全部')}
                     </button>
                     <button
                       className={filesOnly ? 'active' : ''}
                       onClick={() => setFilesOnly(true)}
                     >
-                      仅文件
+                      {t('仅文件')}
                     </button>
-                    <span>按大小 ↓</span>
+                    <span>{t('按大小 ↓')}</span>
                   </div>
-                  <div className="entry-list" aria-label="当前目录内容">
+                  <div className="entry-list" aria-label={t('当前目录内容')}>
                     {snapshot.entries.map((entry) => (
                       <div
                         className={`entry-row ${selected?.id === entry.id ? 'selected' : ''}`}
@@ -550,7 +582,9 @@ export default function App() {
                           aria-label={`${entry.name} ${formatSize(entry[metric])}`}
                           onClick={() => setSelected(entry)}
                           onDoubleClick={() => enter(entry)}
-                          title={entry.note ? `${entry.name} · ${entry.note}` : entry.name}
+                          title={
+                            entry.note ? `${entry.name} · ${translateNote(entry.note)}` : entry.name
+                          }
                         >
                           <span
                             className="entry-icon"
@@ -564,7 +598,7 @@ export default function App() {
                         {entry.directory && (
                           <button
                             className="enter-dir"
-                            aria-label={`进入 ${entry.name}`}
+                            aria-label={t('进入 {name}', { name: entry.name })}
                             onClick={() => enter(entry)}
                           >
                             <ChevronRight size={14} />
@@ -574,23 +608,28 @@ export default function App() {
                     ))}
                     {snapshot.entries.length === 0 && (
                       <p className="list-empty">
-                        {scanning ? '正在扫描…' : filesOnly ? '当前目录没有直属文件' : '目录为空'}
+                        {scanning
+                          ? t('正在扫描…')
+                          : filesOnly
+                            ? t('当前目录没有直属文件')
+                            : t('目录为空')}
                       </p>
                     )}
                   </div>
                   <p className="list-caption">
-                    最多显示最大的 100 项{filesOnly ? ' · 不含子目录中的文件' : ''}
+                    {t('最多显示最大的 100 项')}
+                    {filesOnly ? t(' · 不含子目录中的文件') : ''}
                   </p>
                 </section>
               </aside>
             )}
           </div>
           <footer className="statusbar">
-            <div className="legend" aria-label="配色图例" tabIndex={0}>
+            <div className="legend" aria-label={t('配色图例')} tabIndex={0}>
               {colorMode === 'directory' ? (
                 <>
                   <Palette size={12} />
-                  <span>目录分色</span>
+                  <span>{t('目录分色')}</span>
                   {snapshot.tree.children.slice(0, 5).map((entry) => (
                     <span key={entry.id} title={entry.name}>
                       <i style={{ background: groups.get(entry.id) }} />
@@ -615,12 +654,18 @@ export default function App() {
               )}
             </div>
             <span className="footer-info" title={snapshot.currentPath}>
-              {snapshot.skipped > 0 ? `跳过 ${snapshot.skipped} 项 · ` : ''}
-              {metric === 'allocated' ? '已分配大小不等于可释放空间' : '双击目录进入'} ·{' '}
+              {snapshot.skipped > 0 ? t('跳过 {count} 项 · ', { count: snapshot.skipped }) : ''}
+              {metric === 'allocated' ? t('已分配大小不等于可释放空间') : t('双击目录进入')} ·{' '}
               {formatSize(current![metric])}
             </span>
           </footer>
         </>
+      )}
+      {preferencesOpen && (
+        <SettingsPanel
+          onClose={() => setPreferencesOpen(false)}
+          onError={(error) => setError(String(error))}
+        />
       )}
       {privacy && (
         <div className="modal-backdrop" onClick={() => setPrivacy(false)}>
@@ -633,33 +678,37 @@ export default function App() {
           >
             <button
               className="modal-close icon-button"
-              aria-label="关闭权限说明"
+              aria-label={t('关闭权限说明')}
               onClick={() => setPrivacy(false)}
             >
               <X size={18} />
             </button>
             <ShieldCheck className="modal-icon" size={28} />
-            <h2 id="privacy-title">文件访问权限</h2>
+            <h2 id="privacy-title">{t('文件访问权限')}</h2>
             <p>
-              SpaceTiles
-              只读取文件名、大小等信息。扫描从你选择的目录开始，不会修改文件，也不会上传扫描结果。
+              {t(
+                'SpaceTiles 只读取文件名、大小等信息。扫描从你选择的目录开始，不会修改文件，也不会上传扫描结果。',
+              )}
             </p>
-            <h3>访问受限的目录</h3>
+            <h3>{t('访问受限的目录')}</h3>
             <p>
-              打开「系统设置 → 隐私与安全性 →
-              文件与文件夹」，检查相关访问权限。如果需要分析邮件、备份等受保护数据，再按需将
-              SpaceTiles 加入「完全磁盘访问权限」。
+              {t(
+                '打开「系统设置 → 隐私与安全性 → 文件与文件夹」，检查相关访问权限。如果需要分析邮件、备份等受保护数据，再按需将 SpaceTiles 加入「完全磁盘访问权限」。',
+              )}
             </p>
             <p>
-              访问被拒绝也可能来自文件所有者或系统保护。完全磁盘访问权限并不能解除所有限制。授权后可能需要退出并重新打开应用，再重新扫描。
+              {t(
+                '访问被拒绝也可能来自文件所有者或系统保护。完全磁盘访问权限并不能解除所有限制。授权后可能需要退出并重新打开应用，再重新扫描。',
+              )}
             </p>
-            <h3>大小统计</h3>
+            <h3>{t('大小统计')}</h3>
             <p>
-              逻辑大小是文件声明的长度；已分配大小来自文件系统报告的块数。APFS
-              共享块、克隆与快照意味着它们都不等于删除后可释放的空间。硬链接只计一次，符号链接和其他设备挂载点默认跳过。
+              {t(
+                '逻辑大小是文件声明的长度；已分配大小来自文件系统报告的块数。APFS 共享块、克隆与快照意味着它们都不等于删除后可释放的空间。硬链接只计一次，符号链接和其他设备挂载点默认跳过。',
+              )}
             </p>
             <button className="primary" disabled={!native} onClick={settings}>
-              打开隐私与安全性
+              {t('打开隐私与安全性')}
               <ArrowUpRight size={15} />
             </button>
           </section>
@@ -676,17 +725,21 @@ export default function App() {
           >
             <button
               className="modal-close icon-button"
-              aria-label="关闭错误详情"
+              aria-label={t('关闭错误详情')}
               onClick={() => setIssues(false)}
             >
               <X size={18} />
             </button>
-            <h2 id="issues-title">未读取的项目</h2>
-            <p>共 {snapshot.errors} 项错误，最多保留前 100 条。以下内容未纳入完整统计。</p>
+            <h2 id="issues-title">{t('未读取的项目')}</h2>
+            <p>
+              {t('共 {count} 项错误，最多保留前 100 条。以下内容未纳入完整统计。', {
+                count: snapshot.errors,
+              })}
+            </p>
             <div className="issue-list">
               {snapshot.issues.map((issue, index) => (
                 <article key={index}>
-                  <strong>{issue.permissionDenied ? '访问被拒绝' : '读取失败'}</strong>
+                  <strong>{issue.permissionDenied ? t('访问被拒绝') : t('读取失败')}</strong>
                   <code>{issue.path}</code>
                   <p>{issue.message}</p>
                 </article>

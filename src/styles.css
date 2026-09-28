@@ -1042,3 +1042,133 @@ button[aria-pressed='true'] {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+
+/* Settings use a fixed navigation column and independent content sections. */
+.settings-modal {
+  width: 620px;
+  padding: 0;
+  overflow: hidden;
+}
+.settings-heading {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.settings-heading h2 {
+  margin: 0;
+  font-size: 14px;
+}
+.settings-body {
+  display: flex;
+  min-height: 300px;
+}
+.settings-nav {
+  width: 140px;
+  flex-shrink: 0;
+  padding: 12px 8px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+.settings-nav button {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 9px 12px;
+  margin-bottom: 4px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.settings-nav button[aria-pressed='true'] {
+  background: var(--accent-soft);
+}
+.settings-content {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+}
+.settings-content h3 {
+  margin: 0 0 18px;
+  font-size: 14px;
+}
+.settings-group {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--control);
+  overflow: hidden;
+}
+.settings-row {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--line);
+}
+.settings-row select {
+  min-width: 150px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control);
+}
+.about-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.about-brand .brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+.about-brand strong {
+  font-size: 18px;
+}
+.about-brand p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.about-metadata dt {
+  color: var(--secondary);
+}
+.about-metadata dd {
+  margin: 0;
+}
+.settings-button {
+  flex-shrink: 0;
+  height: 29px;
+  font-size: 12px;
+}
+/* Keep the directory summary flexible when English labels need more room. */
+.brand {
+  flex-shrink: 1;
+}
+:lang(en) .slogan {
+  letter-spacing: 0;
+}
+@media (max-width: 1100px) {
+  .toolbar {
+    gap: 8px;
+  }
+  .brand {
+    min-width: 60px;
+    max-width: 140px;
+  }
+  .toolbar-actions button {
+    padding: 5px 6px;
+  }
+  .settings-button {
+    padding: 5px 7px;
+  }
+  .settings-button > span {
+    display: none;
+  }
+}

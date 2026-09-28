@@ -1,12 +1,22 @@
+import { t } from './i18n';
 import type { Entry } from './types';
 
 // This registry drives classification, tile colors and the legend together.
 // It describes filename extensions, not verified MIME types or file contents.
 export const fileTypes = [
-  { id: 'folder', label: '目录', color: '#596574', extensions: [] },
+  {
+    id: 'folder',
+    get label() {
+      return t('目录');
+    },
+    color: '#596574',
+    extensions: [],
+  },
   {
     id: 'image',
-    label: '图片',
+    get label() {
+      return t('图片');
+    },
     color: '#7747b4',
     extensions: [
       'jpg',
@@ -34,7 +44,9 @@ export const fileTypes = [
   },
   {
     id: 'video',
-    label: '视频',
+    get label() {
+      return t('视频');
+    },
     color: '#a65013',
     extensions: [
       'mp4',
@@ -56,7 +68,9 @@ export const fileTypes = [
   },
   {
     id: 'audio',
-    label: '音频',
+    get label() {
+      return t('音频');
+    },
     color: '#147568',
     extensions: [
       'mp3',
@@ -78,7 +92,9 @@ export const fileTypes = [
   },
   {
     id: 'document',
-    label: '文稿',
+    get label() {
+      return t('文稿');
+    },
     color: '#235eac',
     extensions: [
       'pdf',
@@ -100,19 +116,25 @@ export const fileTypes = [
   },
   {
     id: 'spreadsheet',
-    label: '表格',
+    get label() {
+      return t('表格');
+    },
     color: '#287143',
     extensions: ['xls', 'xlsx', 'xlsm', 'xlsb', 'numbers', 'ods', 'csv', 'tsv'],
   },
   {
     id: 'presentation',
-    label: '演示',
+    get label() {
+      return t('演示');
+    },
     color: '#ae3e39',
     extensions: ['ppt', 'pptx', 'pptm', 'key', 'odp'],
   },
   {
     id: 'archive',
-    label: '压缩包',
+    get label() {
+      return t('压缩包');
+    },
     color: '#82620e',
     extensions: [
       'zip',
@@ -137,7 +159,9 @@ export const fileTypes = [
   },
   {
     id: 'installer',
-    label: '安装包',
+    get label() {
+      return t('安装包');
+    },
     color: '#a43d67',
     extensions: [
       'dmg',
@@ -159,7 +183,9 @@ export const fileTypes = [
   },
   {
     id: 'code',
-    label: '代码',
+    get label() {
+      return t('代码');
+    },
     color: '#5050a4',
     extensions: [
       'js',
@@ -216,7 +242,9 @@ export const fileTypes = [
   },
   {
     id: 'data',
-    label: '数据',
+    get label() {
+      return t('数据');
+    },
     color: '#176780',
     extensions: [
       'json',
@@ -239,7 +267,9 @@ export const fileTypes = [
   },
   {
     id: 'design',
-    label: '设计',
+    get label() {
+      return t('设计');
+    },
     color: '#913e91',
     extensions: [
       'psd',
@@ -264,11 +294,20 @@ export const fileTypes = [
   },
   {
     id: 'font',
-    label: '字体',
+    get label() {
+      return t('字体');
+    },
     color: '#785339',
     extensions: ['ttf', 'otf', 'woff', 'woff2', 'ttc', 'dfont', 'eot'],
   },
-  { id: 'other', label: '其他', color: '#536170', extensions: [] },
+  {
+    id: 'other',
+    get label() {
+      return t('其他');
+    },
+    color: '#536170',
+    extensions: [],
+  },
 ] as const;
 export type FileCategory = (typeof fileTypes)[number]['id'];
 export const extensionCategories = new Map<string, FileCategory>(
