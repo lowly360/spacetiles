@@ -303,16 +303,35 @@ impl Tree {
 }
 
 pub fn scan(job: Arc<Job>) {
+    scan_with_reader(job, |path| fs::read_dir(path));
+}
+
+// Keep directory enumeration replaceable so tests can present both real firmlink
+// paths in a small fixture instead of traversing the user's entire startup disk.
+fn scan_with_reader<I>(
+    job: Arc<Job>,
+    read_directory: impl Fn(&std::path::Path) -> std::io::Result<I>,
+) where
+    I: IntoIterator<Item = std::io::Result<fs::DirEntry>>,
+{
     let root = job.tree.lock().unwrap().root.clone();
     #[cfg(unix)]
-    let root_device = fs::metadata(&root).map(|m| m.dev()).unwrap_or(0);
+    let root_metadata = fs::metadata(&root).ok();
+    #[cfg(unix)]
+    let root_device = root_metadata.as_ref().map(|m| m.dev()).unwrap_or(0);
+    #[cfg(unix)]
+    let mut directory_identities = root_metadata
+        .as_ref()
+        .map(|m| (m.dev(), m.ino()))
+        .into_iter()
+        .collect::<HashSet<_>>();
     let mut directories = vec![(root, 0)];
     let mut identities = HashSet::new();
     while let Some((path, parent)) = directories.pop() {
         if job.cancel.load(Ordering::Relaxed) {
             break;
         }
-        let reader = match fs::read_dir(&path) {
+        let reader = match read_directory(&path) {
             Ok(reader) => reader,
             Err(error) => {
                 let mut tree = job.tree.lock().unwrap();
@@ -356,6 +375,14 @@ pub fn scan(job: Arc<Job>) {
             #[cfg(unix)]
             if metadata.dev() != root_device {
                 note = Some("other_device".into());
+                skip = true;
+            }
+            #[cfg(unix)]
+            if directory && !skip && !register_directory(&metadata, &mut directory_identities) {
+                // APFS firmlinks expose the same directory through multiple paths without
+                // being symlinks. Claim the identity before enqueueing, so aliases and
+                // loops never scan the same descendants twice, including nlink == 1 files.
+                note = Some("duplicate_directory".into());
                 skip = true;
             }
             if metadata.is_file() && !skip {
@@ -407,6 +434,11 @@ pub fn scan(job: Arc<Job>) {
         "complete"
     };
     tree.elapsed_ms = tree.started.elapsed().as_millis() as u64;
+}
+
+#[cfg(unix)]
+fn register_directory(metadata: &fs::Metadata, identities: &mut HashSet<(u64, u64)>) -> bool {
+    identities.insert((metadata.dev(), metadata.ino()))
 }
 
 #[cfg(test)]
@@ -465,6 +497,64 @@ mod tests {
         assert_eq!(tree.nodes[0].logical, 23);
         assert_eq!(tree.skipped, 1);
         assert_eq!(tree.files, 2);
+    }
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn apfs_firmlink_directories_share_an_identity() {
+        let visible = fs::symlink_metadata("/Users").unwrap();
+        let backing = fs::symlink_metadata("/System/Volumes/Data/Users").unwrap();
+        // A real macOS firmlink is a directory, not a symbolic link. Device checks
+        // alone do not exclude its second path on the unified startup volume.
+        assert!(visible.is_dir() && backing.is_dir());
+        assert_eq!(
+            (visible.dev(), visible.ino()),
+            (backing.dev(), backing.ino())
+        );
+        let mut identities = HashSet::new();
+        assert!(register_directory(&visible, &mut identities));
+        assert!(!register_directory(&backing, &mut identities));
+        let different = fs::symlink_metadata("/System/Volumes/Data").unwrap();
+        assert!(register_directory(&different, &mut identities));
+    }
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn deduplicates_firmlink_subtrees_with_single_link_files() {
+        let dir = tempfile::Builder::new()
+            .prefix(".spacetiles-test-")
+            .tempdir_in("/Users/Shared")
+            .unwrap();
+        fs::create_dir(dir.path().join("folder")).unwrap();
+        let file = dir.path().join("folder/leaf");
+        fs::write(&file, [1; 37]).unwrap();
+        let metadata = fs::metadata(&file).unwrap();
+        assert_eq!(metadata.nlink(), 1);
+        let backing = std::path::Path::new("/System/Volumes/Data")
+            .join(dir.path().strip_prefix("/").unwrap());
+        let job = job(dir.path().to_path_buf());
+        scan_with_reader(job.clone(), |path| {
+            let mut entries = fs::read_dir(path)?.collect::<Vec<_>>();
+            if path == dir.path() {
+                entries.extend(fs::read_dir(&backing)?);
+            }
+            Ok(entries)
+        });
+        let tree = job.tree.lock().unwrap();
+        assert_eq!(tree.status, "complete");
+        assert_eq!(tree.errors, 0);
+        assert_eq!(tree.files, 1);
+        assert_eq!(tree.directories, 2);
+        assert_eq!(tree.skipped, 1);
+        assert_eq!(tree.nodes[0].logical, 37);
+        assert_eq!(tree.nodes[0].allocated, metadata.blocks() * 512);
+        let duplicate = tree
+            .nodes
+            .iter()
+            .find(|node| node.note.as_deref() == Some("duplicate_directory"))
+            .unwrap();
+        assert!(duplicate.directory);
+        assert!(duplicate.children.is_empty());
+        assert_eq!(duplicate.logical, 0);
+        assert_eq!(duplicate.allocated, 0);
     }
     #[test]
     fn cancellation_preserves_partial_results() {

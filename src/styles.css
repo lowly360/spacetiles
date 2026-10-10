@@ -46,6 +46,52 @@
 body {
   margin: 0;
 }
+.item-context-menu {
+  position: fixed;
+  z-index: 15;
+  width: 224px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--modal);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.24);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+.item-context-menu button {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 9px;
+  background: transparent;
+  box-shadow: none;
+}
+.item-context-menu button:hover:not(:disabled),
+.item-context-menu button:focus-visible {
+  background: var(--accent);
+  color: white;
+  outline: none;
+}
+.item-context-menu small {
+  display: block;
+  padding: 5px 9px;
+  color: var(--secondary);
+}
+.action-notice {
+  position: fixed;
+  bottom: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 16;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--modal);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
 button,
 select {
   font: inherit;

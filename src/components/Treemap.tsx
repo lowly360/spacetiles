@@ -11,8 +11,18 @@ interface Props {
   selected: number | null;
   onSelect: (entry: Entry) => void;
   onEnter: (entry: Entry) => void;
+  onContextMenu: (entry: Entry, x: number, y: number) => void;
 }
-export function Treemap({ colorMode, rootPath, root, metric, selected, onSelect, onEnter }: Props) {
+export function Treemap({
+  colorMode,
+  rootPath,
+  root,
+  metric,
+  selected,
+  onSelect,
+  onEnter,
+  onContextMenu,
+}: Props) {
   const language = useLanguage();
   const container = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -107,6 +117,13 @@ export function Treemap({ colorMode, rootPath, root, metric, selected, onSelect,
         onDoubleClick={(e) => {
           const { tile } = pointer(e);
           if (tile && !tile.aggregate) onEnter(tile.node);
+        }}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          const { tile } = pointer(event);
+          if (tile?.aggregate) return;
+          setHover(null);
+          onContextMenu(tile?.node ?? root, event.clientX, event.clientY);
         }}
         style={{ width: size.width, height: size.height }}
       />

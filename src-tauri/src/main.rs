@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #[cfg(target_os = "macos")]
 mod menu;
+mod platform;
 mod scanner;
 use scanner::{Job, Snapshot, Tree};
 use std::{
@@ -130,6 +131,24 @@ fn open_privacy_settings() -> Result<(), String> {
         Err("settings_macos_only".into())
     }
 }
+#[tauri::command]
+async fn perform_item_action(
+    scan_id: u64,
+    node_id: usize,
+    action: platform::ItemAction,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let job = current_job(&state, scan_id)?;
+    let path = job
+        .tree
+        .lock()
+        .map_err(|_| "scan_data_unavailable")?
+        .path(node_id)
+        .ok_or("item_not_found")?;
+    tauri::async_runtime::spawn_blocking(move || platform::perform_item_action(&path, action))
+        .await
+        .map_err(|e| e.to_string())?
+}
 // Read language preference rather than region (e.g. an English UI in China).
 #[tauri::command]
 fn preferred_language() -> String {
@@ -175,6 +194,7 @@ fn main() {
             cancel_scan,
             get_snapshot,
             reveal_item,
+            perform_item_action,
             open_privacy_settings,
             preferred_language,
             set_menu_language

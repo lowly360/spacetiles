@@ -154,6 +154,12 @@ export const english = {
   占当前目录: 'Share of this folder',
   已分配大小: 'Allocated size',
   '在 Finder 中显示': 'Show in Finder',
+  文件操作: 'File actions',
+  在访达中打开: 'Open in Finder',
+  复制绝对路径: 'Copy absolute path',
+  在终端中打开: 'Open in Terminal',
+  路径已复制: 'Path copied',
+  示例数据不支持文件操作: 'File actions are unavailable for demo data',
   直属大文件: 'Largest direct files',
   目录内容: 'Folder contents',
   全部: 'All',
@@ -179,8 +185,8 @@ export const english = {
   '访问被拒绝也可能来自文件所有者或系统保护。完全磁盘访问权限并不能解除所有限制。授权后可能需要退出并重新打开应用，再重新扫描。':
     'File ownership and system protections can also deny access. Full Disk Access does not remove every restriction. After granting access, you may need to quit and reopen the app before rescanning.',
   大小统计: 'Understanding file sizes',
-  '逻辑大小是文件声明的长度；已分配大小来自文件系统报告的块数。APFS 共享块、克隆与快照意味着它们都不等于删除后可释放的空间。硬链接只计一次，符号链接和其他设备挂载点默认跳过。':
-    'Logical size is the length reported by a file; allocated size comes from filesystem block counts. With APFS shared blocks, clones, and snapshots, neither equals the space reclaimed by deletion. Hard links count once. Symbolic links and mounts on other devices are skipped.',
+  '逻辑大小是文件声明的长度；已分配大小来自文件系统报告的块数。APFS 共享块、克隆与快照意味着它们都不等于删除后可释放的空间。硬链接只计一次，同一目录的多个入口只扫描一次；重复入口、符号链接和其他设备挂载点会标注并跳过。':
+    'Logical size is the length reported by a file; allocated size comes from filesystem block counts. With APFS shared blocks, clones, and snapshots, neither equals the space reclaimed by deletion. Hard links count once, and each directory is scanned through one path. Duplicate directory paths, symbolic links, and mounts on other devices are labeled and skipped.',
   打开隐私与安全性: 'Open Privacy & Security',
   关闭错误详情: 'Close error details',
   未读取的项目: 'Unread items',
@@ -247,6 +253,17 @@ const backendMessages = {
   ],
   reveal_failed: ['无法在 Finder 中显示该项目', 'Could not show this item in Finder.'],
   finder_macos_only: ['首版仅支持 macOS Finder', 'Finder integration is available on macOS only.'],
+  finder_open_failed: ['无法在访达中打开该项目', 'Could not open this item in Finder.'],
+  terminal_open_failed: [
+    '无法打开终端，请检查系统终端应用是否可用',
+    'Could not open Terminal. Check that the system Terminal app is available.',
+  ],
+  copy_path_failed: ['复制路径失败，请重试', 'Could not copy the path. Try again.'],
+  path_encoding_unsupported: [
+    '该路径包含无法复制的字符，请使用访达定位',
+    'This path contains characters that cannot be copied. Locate it in Finder.',
+  ],
+  file_actions_macos_only: ['文件操作仅支持 macOS', 'File actions are available on macOS only.'],
   settings_failed: [
     '请手动打开系统设置 → 隐私与安全性',
     'Open System Settings → Privacy & Security manually.',
@@ -263,6 +280,10 @@ const backendMessages = {
   symlink: ['符号链接 · 未跟随', 'Symbolic link · Not followed'],
   special_file: ['特殊文件 · 已跳过', 'Special file · Skipped'],
   other_device: ['其他设备挂载点 · 已跳过', 'Mount on another device · Skipped'],
+  duplicate_directory: [
+    '重复目录入口 · 已跳过，大小归入首次发现的路径',
+    'Duplicate directory path · Skipped; size counted at the first path',
+  ],
   duplicate_link: [
     '重复硬链接 · 大小已归入其他路径',
     'Duplicate hard link · Size counted at another path',

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { SettingsPanel } from './components/SettingsPanel';
 import { Treemap } from './components/Treemap';
+import { ItemContextMenu, type ItemAction } from './components/ItemContextMenu';
 import { formatSize, type Entry, type Metric, type Snapshot } from './lib/types';
 import { groupColors, entryColor, type ColorMode } from './lib/palette';
 import { fileTypes } from './lib/fileTypes';
@@ -55,6 +56,55 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [issues, setIssues] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{
+    entry: Entry;
+    scanId: number;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [notice, setNotice] = useState('');
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  useEffect(closeContextMenu, [
+    closeContextMenu,
+    scanId,
+    directory,
+    showHome,
+    language,
+    privacy,
+    issues,
+    preferencesOpen,
+  ]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(''), 2200);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  function openContextMenu(entry: Entry, x: number, y: number) {
+    if (scanId === null) return;
+    setSelected(entry);
+    setContextMenu({ entry, scanId, x, y });
+  }
+  function entryContextMenu(event: React.MouseEvent<HTMLElement>, entry: Entry) {
+    event.preventDefault();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    openContextMenu(entry, event.clientX || bounds.left + 20, event.clientY || bounds.bottom);
+  }
+  async function itemAction(action: ItemAction) {
+    if (!contextMenu || !native || contextMenu.scanId === -1) return;
+    const target = contextMenu;
+    closeContextMenu();
+    setError('');
+    try {
+      await invoke('perform_item_action', {
+        scanId: target.scanId,
+        nodeId: target.entry.id,
+        action,
+      });
+      if (action === 'copy_path') setNotice(t('路径已复制'));
+    } catch (e) {
+      setError(String(e));
+    }
+  }
   const actionVersion = useRef(0);
   const demo = scanId === -1;
   const groups = useMemo(
@@ -511,12 +561,16 @@ export default function App() {
                   selected={selected?.id ?? null}
                   onSelect={setSelected}
                   onEnter={enter}
+                  onContextMenu={openContextMenu}
                 />
               </div>
             </main>
             {sidebarVisible && (
               <aside className="sidebar">
-                <section className="selection">
+                <section
+                  className="selection"
+                  onContextMenu={(event) => chosen && entryContextMenu(event, chosen)}
+                >
                   <span className="eyebrow">{selected ? t('选中项目') : t('当前目录')}</span>
                   <div className="selection-title">
                     {chosen?.directory ? <Folder size={19} /> : <File size={19} />}
@@ -576,12 +630,23 @@ export default function App() {
                       <div
                         className={`entry-row ${selected?.id === entry.id ? 'selected' : ''}`}
                         key={entry.id}
+                        onContextMenu={(event) => entryContextMenu(event, entry)}
                       >
                         <button
                           className="entry-select"
                           aria-label={`${entry.name} ${formatSize(entry[metric])}`}
                           onClick={() => setSelected(entry)}
                           onDoubleClick={() => enter(entry)}
+                          onKeyDown={(event) => {
+                            if (
+                              event.key === 'ContextMenu' ||
+                              (event.shiftKey && event.key === 'F10')
+                            ) {
+                              event.preventDefault();
+                              const bounds = event.currentTarget.getBoundingClientRect();
+                              openContextMenu(entry, bounds.left + 20, bounds.bottom);
+                            }
+                          }}
                           title={
                             entry.note ? `${entry.name} · ${translateNote(entry.note)}` : entry.name
                           }
@@ -661,6 +726,20 @@ export default function App() {
           </footer>
         </>
       )}
+      {contextMenu && (
+        <ItemContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          disabled={demo || !native}
+          onAction={itemAction}
+          onClose={closeContextMenu}
+        />
+      )}
+      {notice && (
+        <div className="action-notice" role="status">
+          {notice}
+        </div>
+      )}
       {preferencesOpen && (
         <SettingsPanel
           onClose={() => setPreferencesOpen(false)}
@@ -704,7 +783,7 @@ export default function App() {
             <h3>{t('大小统计')}</h3>
             <p>
               {t(
-                '逻辑大小是文件声明的长度；已分配大小来自文件系统报告的块数。APFS 共享块、克隆与快照意味着它们都不等于删除后可释放的空间。硬链接只计一次，符号链接和其他设备挂载点默认跳过。',
+                '逻辑大小是文件声明的长度；已分配大小来自文件系统报告的块数。APFS 共享块、克隆与快照意味着它们都不等于删除后可释放的空间。硬链接只计一次，同一目录的多个入口只扫描一次；重复入口、符号链接和其他设备挂载点会标注并跳过。',
               )}
             </p>
             <button className="primary" disabled={!native} onClick={settings}>

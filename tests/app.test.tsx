@@ -7,7 +7,24 @@ const mocks = vi.hoisted(() => ({ invoke: vi.fn(), open: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.invoke, isTauri: () => true }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: mocks.open }));
 // Canvas geometry is tested separately. Here we exercise async command orchestration.
-vi.mock('../src/components/Treemap', () => ({ Treemap: () => <div>Treemap</div> }));
+vi.mock('../src/components/Treemap', () => ({
+  Treemap: ({
+    root,
+    onContextMenu,
+  }: {
+    root: Snapshot['tree'];
+    onContextMenu: (entry: Snapshot['tree'], x: number, y: number) => void;
+  }) => (
+    <div
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onContextMenu(root, event.clientX, event.clientY);
+      }}
+    >
+      Treemap
+    </div>
+  ),
+}));
 import App from '../src/App';
 import { setLanguage } from '../src/lib/i18n';
 function snapshot(scanId = 1, status: Snapshot['status'] = 'complete'): Snapshot {
@@ -197,4 +214,91 @@ it('switches language immediately through settings without losing the scan', asy
   expect(mocks.invoke.mock.calls.filter((call) => call[0] === 'start_scan')).toHaveLength(1);
   expect(mocks.invoke.mock.calls.some((call) => call[0] === 'cancel_scan')).toBe(false);
   expect(mocks.invoke).toHaveBeenCalledWith('set_menu_language', { language: 'en' });
+});
+
+it.each([
+  ['在访达中打开', 'open_finder'],
+  ['复制绝对路径', 'copy_path'],
+  ['在终端中打开', 'open_terminal'],
+])(
+  'runs %s on the right-clicked entry instead of the previously selected entry',
+  async (label, action) => {
+    const result = snapshot();
+    const first = {
+      id: 1,
+      name: '先选中文件',
+      directory: false,
+      logical: 11,
+      allocated: 4096,
+      note: null,
+    };
+    const target = {
+      id: 2,
+      name: '右键文件夹',
+      directory: true,
+      logical: 89,
+      allocated: 4096,
+      note: null,
+    };
+    result.entries = [first, target];
+    result.childCount = 2;
+    mocks.invoke.mockImplementation(async (command: string) =>
+      command === 'start_scan' ? 1 : command === 'get_snapshot' ? result : undefined,
+    );
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: '选择目录' }));
+    fireEvent.click(await screen.findByRole('button', { name: '先选中文件 11 B' }));
+    const row = screen.getByRole('button', { name: '右键文件夹 89 B' });
+    fireEvent.contextMenu(row, { clientX: 400, clientY: 500 });
+    expect(screen.getByRole('heading', { name: '右键文件夹' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: label }));
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith('perform_item_action', {
+        scanId: 1,
+        nodeId: 2,
+        action,
+      }),
+    );
+    expect(screen.queryByRole('menu')).toBeNull();
+    if (action === 'copy_path') expect(await screen.findByText('路径已复制')).toBeTruthy();
+  },
+);
+
+it('supports the map context menu and closes it when navigating or pressing Escape', async () => {
+  mocks.invoke.mockImplementation(async (command: string) =>
+    command === 'start_scan' ? 1 : snapshot(),
+  );
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: '选择目录' }));
+  fireEvent.contextMenu(await screen.findByText('Treemap'), { clientX: 100, clientY: 100 });
+  expect(screen.getByRole('menu')).toBeTruthy();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(screen.queryByRole('menu')).toBeNull();
+  fireEvent.contextMenu(screen.getByText('Treemap'));
+  fireEvent.click(screen.getByRole('button', { name: 'SpaceTiles 首页' }));
+  expect(screen.queryByRole('menu')).toBeNull();
+  expect(mocks.invoke.mock.calls.some((call) => call[0] === 'perform_item_action')).toBe(false);
+});
+
+it('reports native context action failures and disables actions for demo entries', async () => {
+  mocks.invoke.mockImplementation(async (command: string) => {
+    if (command === 'start_scan') return 1;
+    if (command === 'get_snapshot') return snapshot();
+    throw 'terminal_open_failed';
+  });
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: '选择目录' }));
+  fireEvent.contextMenu(await screen.findByText('Treemap'));
+  fireEvent.click(screen.getByRole('menuitem', { name: '在终端中打开' }));
+  expect(await screen.findByRole('alert')).toHaveProperty(
+    'textContent',
+    expect.stringContaining('无法打开终端'),
+  );
+  cleanup();
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: '打开示例' }));
+  await screen.findByRole('heading', { name: '我的空间' });
+  fireEvent.contextMenu(screen.getByText('Treemap'));
+  for (const item of screen.getAllByRole('menuitem'))
+    expect((item as HTMLButtonElement).disabled).toBe(true);
 });
